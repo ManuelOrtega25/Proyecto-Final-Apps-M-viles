@@ -3,6 +3,7 @@ package com.example.proyectofinal
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
+//entidad de base de datos para las carpetas
 @Entity(tableName = "folders")
 data class Folder(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,

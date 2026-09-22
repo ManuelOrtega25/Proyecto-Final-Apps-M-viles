@@ -26,24 +26,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -66,6 +63,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -76,22 +74,37 @@ import com.example.proyectofinal.ui.theme.DarkBackground
 import com.example.proyectofinal.ui.theme.SecondarySurface
 import com.example.proyectofinal.ui.theme.TextPrimary
 import com.example.proyectofinal.ui.theme.TextSecondary
-import java.time.Duration
 import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.time.format.TextStyle
+import java.util.Locale
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
-// paleta de colores
-val ColorOptions = listOf(
-    "#151515",
-    "#1B2415",
-    "#241D15",
-    "#1E1E1E",
-    "#222015"
-)
+//formato corto de fecha estilo ios
+fun formatShortDate(dateTime: LocalDateTime): String {
+    val formatter = DateTimeFormatter.ofPattern("d/M/yy")
+    return dateTime.format(formatter)
+}
 
-val CategoryList = listOf("Trabajo", "Personal", "Idea", "Urgente")
+//agrupar notas por periodo de tiempo estilo ios
+fun groupNotesByPeriod(notes: List<Note>): Map<String, List<Note>> {
+    val now = LocalDateTime.now()
+    val thirtyDaysAgo = now.minusDays(30)
 
+    return notes.groupBy { note ->
+        when {
+            note.date.isAfter(thirtyDaysAgo) -> "Anteriores 30 días"
+            note.date.year == now.year -> {
+                note.date.month.getDisplayName(TextStyle.FULL, Locale.forLanguageTag("es-ES"))
+                    .replaceFirstChar { it.uppercase() }
+            }
+            else -> note.date.year.toString()
+        }
+    }
+}
+
+//pantalla de notas de una carpeta estilo ios apple notes
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NoteListScreen(
@@ -100,16 +113,83 @@ fun NoteListScreen(
     onBackClick: (() -> Unit)? = null
 ) {
     val notes by viewModel.allNotes.collectAsState()
-    val rawNotes by viewModel.rawNotesList.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
-    val selectedCategory by viewModel.selectedCategory.collectAsState()
 
     var showBottomSheet by remember { mutableStateOf(false) }
     var editingNote by remember { mutableStateOf<Note?>(null) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
+    val groupedNotes = groupNotesByPeriod(notes)
+
     Scaffold(
-        containerColor = DarkBackground
+        containerColor = DarkBackground,
+        bottomBar = {
+            //barra inferior con buscador y boton de nueva nota
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(DarkBackground)
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .navigationBarsPadding()
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    //campo de busqueda estilo buscador ios
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { viewModel.setSearchQuery(it) },
+                        placeholder = { Text("Buscar", color = TextSecondary, fontSize = 15.sp) },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = "Buscar",
+                                tint = TextSecondary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp),
+                        shape = RoundedCornerShape(24.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = SecondarySurface,
+                            unfocusedContainerColor = SecondarySurface,
+                            focusedBorderColor = Color.Transparent,
+                            unfocusedBorderColor = Color.Transparent,
+                            focusedTextColor = TextPrimary,
+                            unfocusedTextColor = TextPrimary
+                        ),
+                        singleLine = true
+                    )
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    //boton para crear nueva nota
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(SecondarySurface)
+                            .border(1.dp, BorderColor, RoundedCornerShape(16.dp))
+                            .clickable {
+                                editingNote = null
+                                showBottomSheet = true
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Nueva nota",
+                            tint = AccentYellow,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+            }
+        }
     ) { paddingValues ->
 
         Column(
@@ -118,236 +198,138 @@ fun NoteListScreen(
                 .padding(paddingValues)
                 .padding(horizontal = 16.dp)
         ) {
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-            // Botón opcional para regresar a la pantalla de carpetas
-            if (onBackClick != null) {
-                Row(
-                    modifier = Modifier
-                        .clickable { onBackClick() }
-                        .padding(vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Volver a carpetas",
-                        tint = AccentYellow,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "Carpetas",
-                        color = AccentYellow,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp
-                    )
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-            }
-
-            // encabezado de la app
+            //barra superior con boton de regresar circular y menu de tres puntos
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    // Badge con icono amarillo
+                if (onBackClick != null) {
                     Box(
                         modifier = Modifier
-                            .size(44.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(AccentYellow),
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(SecondarySurface)
+                            .clickable { onBackClick() },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Edit,
-                            contentDescription = null,
-                            tint = DarkBackground,
-                            modifier = Modifier.size(24.dp)
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Volver",
+                            tint = TextPrimary,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
-
-                    Spacer(modifier = Modifier.width(12.dp))
-
-                    Column {
-                        Text(
-                            text = if (selectedCategory == "Archivadas") "Archivadas" else folderName,
-                            style = MaterialTheme.typography.titleLarge
-                        )
-                        val activeNotes = rawNotes.filter { !it.isArchived }
-                        val archivedNotes = rawNotes.filter { it.isArchived }
-                        val pinnedCount = activeNotes.count { it.isPinned }
-
-                        val subtitleText = if (selectedCategory == "Archivadas") {
-                            "${archivedNotes.size} notas archivadas"
-                        } else {
-                            "${activeNotes.size} notas · $pinnedCount fijadas"
-                        }
-
-                        Text(
-                            text = subtitleText,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = TextSecondary
-                        )
-                    }
+                } else {
+                    Spacer(modifier = Modifier.width(38.dp))
                 }
 
-                // boton de nueva nota con texto e icono en negro bien visible
-                Button(
-                    onClick = {
-                        editingNote = null
-                        showBottomSheet = true
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = AccentYellow,
-                        contentColor = Color.Black
-                    ),
-                    shape = RoundedCornerShape(16.dp),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp)
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(CircleShape)
+                        .background(SecondarySurface),
+                    contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = null,
-                        tint = Color.Black,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "Nueva nota",
-                        color = Color.Black,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp
+                        imageVector = Icons.Default.MoreVert,
+                        contentDescription = "Opciones",
+                        tint = TextPrimary,
+                        modifier = Modifier.size(22.dp)
                     )
                 }
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            //titulo de la carpeta y contador de notas
+            Text(
+                text = folderName,
+                style = MaterialTheme.typography.titleLarge,
+                fontSize = 34.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            Text(
+                text = "${notes.size} notas",
+                color = TextSecondary,
+                fontSize = 14.sp,
+                modifier = Modifier.padding(top = 2.dp)
+            )
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // barra de busqueda
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { viewModel.setSearchQuery(it) },
-                placeholder = { Text("Buscar notas...", color = TextSecondary) },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = "Buscar",
-                        tint = TextSecondary
-                    )
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = SecondarySurface,
-                    unfocusedContainerColor = SecondarySurface,
-                    focusedBorderColor = AccentYellow,
-                    unfocusedBorderColor = BorderColor,
-                    focusedTextColor = TextPrimary,
-                    unfocusedTextColor = TextPrimary
-                ),
-                singleLine = true
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // categorias (incluyendo la sección de Archivadas)
-            val activeNotesList = rawNotes.filter { !it.isArchived }
-            val archivedNotesList = rawNotes.filter { it.isArchived }
-            val allFilterCategories = listOf("Todas") + CategoryList + listOf("Archivadas")
-
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(allFilterCategories) { category ->
-                    val count = when (category) {
-                        "Todas" -> activeNotesList.size
-                        "Archivadas" -> archivedNotesList.size
-                        else -> activeNotesList.count { it.category.equals(category, ignoreCase = true) }
-                    }
-
-                    val isSelected = selectedCategory == category
-                    val labelText = if (category == "Todas") "Todas" else "$category $count"
-
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(if (isSelected) AccentYellow else SecondarySurface)
-                            .clickable { viewModel.setSelectedCategory(category) }
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                    ) {
-                        Text(
-                            text = labelText,
-                            color = if (isSelected) DarkBackground else TextSecondary,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                            fontSize = 13.sp
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // texto de sugerencia
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                val hintText = if (selectedCategory == "Archivadas") {
-                    "→ Desliza a la derecha para desarchivar"
-                } else {
-                    "→ Desliza a la derecha para archivar · toca "
-                }
-                Text(
-                    text = hintText,
-                    color = TextSecondary,
-                    fontSize = 12.sp
-                )
-                if (selectedCategory != "Archivadas") {
-                    Icon(
-                        imageVector = Icons.Default.Star,
-                        contentDescription = null,
-                        tint = AccentYellow,
-                        modifier = Modifier.size(12.dp)
-                    )
+            //lista de notas agrupadas en tarjetas redondeadas estilo ios
+            if (notes.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(bottom = 60.dp),
+                    contentAlignment = Alignment.Center
+                ) {
                     Text(
-                        text = " para fijar",
+                        text = "No hay notas",
                         color = TextSecondary,
-                        fontSize = 12.sp
+                        fontSize = 16.sp
                     )
                 }
-            }
+            } else {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(20.dp),
+                    contentPadding = PaddingValues(bottom = 24.dp)
+                ) {
+                    groupedNotes.forEach { (periodTitle, periodNotes) ->
+                        item {
+                            Column {
+                                //encabezado del periodo de tiempo
+                                Text(
+                                    text = periodTitle,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = TextPrimary,
+                                    modifier = Modifier.padding(bottom = 10.dp, start = 4.dp)
+                                )
 
-            Spacer(modifier = Modifier.height(12.dp))
+                                //tarjeta contenedora agrupada
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .border(1.dp, BorderColor, RoundedCornerShape(16.dp)),
+                                    colors = CardDefaults.cardColors(containerColor = SecondarySurface),
+                                    shape = RoundedCornerShape(16.dp)
+                                ) {
+                                    Column {
+                                        periodNotes.forEachIndexed { index, note ->
+                                            SwipeableNoteItemRow(
+                                                note = note,
+                                                onDelete = { viewModel.deleteNote(note) },
+                                                onEdit = {
+                                                    editingNote = note
+                                                    showBottomSheet = true
+                                                }
+                                            )
 
-            // lista con gestos y animaciones (Archivar/Desarchivar / Eliminar)
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(bottom = 24.dp)
-            ) {
-                items(items = notes, key = { it.id }) { note ->
-                    SwipeableNoteItem(
-                        note = note,
-                        onDelete = { viewModel.deleteNote(note) },
-                        onArchiveToggle = {
-                            if (note.isArchived) {
-                                viewModel.unarchiveNote(note)
-                            } else {
-                                viewModel.archiveNote(note)
+                                            if (index < periodNotes.size - 1) {
+                                                HorizontalDivider(
+                                                    color = BorderColor,
+                                                    thickness = 0.5.dp,
+                                                    modifier = Modifier.padding(start = 16.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
                             }
-                        },
-                        onTogglePin = { viewModel.togglePin(note) },
-                        onEdit = {
-                            editingNote = note
-                            showBottomSheet = true
                         }
-                    )
+                    }
                 }
             }
         }
 
-        // modal Bottom Sheet de nueva nota y editar nota
+        //modal bottom sheet para crear o editar nota
         if (showBottomSheet) {
             ModalBottomSheet(
                 onDismissRequest = { showBottomSheet = false },
@@ -358,23 +340,19 @@ fun NoteListScreen(
                 NoteFormBottomSheet(
                     noteToEdit = editingNote,
                     onDismiss = { showBottomSheet = false },
-                    onSave = { title, content, category, colorHex ->
+                    onSave = { title, content ->
                         if (editingNote != null) {
                             viewModel.updateNote(
                                 editingNote!!.copy(
                                     title = title,
-                                    content = content,
-                                    category = category,
-                                    colorHex = colorHex
+                                    content = content
                                 )
                             )
                         } else {
                             val newNote = Note(
                                 title = title,
                                 content = content,
-                                date = LocalDateTime.now(),
-                                category = category,
-                                colorHex = colorHex
+                                date = LocalDateTime.now()
                             )
                             viewModel.insertNote(newNote)
                         }
@@ -386,15 +364,12 @@ fun NoteListScreen(
     }
 }
 
-// elemento deslizable con soporte de Archivar / Desarchivar
+//fila deslizable para eliminar o editar notas
 @Composable
-fun SwipeableNoteItem(
+fun SwipeableNoteItemRow(
     note: Note,
     onDelete: () -> Unit,
-    onArchiveToggle: () -> Unit,
-    onTogglePin: () -> Unit,
-    onEdit: () -> Unit,
-    modifier: Modifier = Modifier
+    onEdit: () -> Unit
 ) {
     val coroutineScope = rememberCoroutineScope()
     val offsetX = remember { Animatable(0f) }
@@ -402,72 +377,42 @@ fun SwipeableNoteItem(
     AnimatedVisibility(
         visible = note.isVisible,
         enter = slideInHorizontally { -it } + fadeIn(),
-        exit = slideOutVertically { it } + fadeOut(),
-        modifier = modifier
+        exit = slideOutVertically { it } + fadeOut()
     ) {
-        val isSwipingRight = offsetX.value > 0
-        val bgColor = if (isSwipingRight) Color(0xFF0D2818) else Color.Red
-
         Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(bgColor)
+            modifier = Modifier.fillMaxWidth()
         ) {
-            if (isSwipingRight) {
-                // Fondo verde con texto "→ Archivar" o "→ Desarchivar"
-                Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 20.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Start
-                ) {
-                    Text(
-                        text = if (note.isArchived) "→  Desarchivar" else "→  Archivar",
-                        color = Color(0xFF22C55E),
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
-                    )
-                }
-            } else {
-                // Fondo rojo con icono de eliminar
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 20.dp),
-                    contentAlignment = Alignment.CenterEnd
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Eliminar",
-                        tint = Color.White
-                    )
-                }
+            //fondo de eliminacion
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Red)
+                    .padding(horizontal = 20.dp),
+                contentAlignment = Alignment.CenterEnd
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Eliminar",
+                    tint = Color.White
+                )
             }
 
-            // tarjeta deslizable
-            Box(
+            //contenido de la fila estilo ios
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .offset { IntOffset(offsetX.value.roundToInt(), 0) }
+                    .background(SecondarySurface)
+                    .clickable { onEdit() }
                     .pointerInput(note.id) {
                         detectHorizontalDragGestures(
                             onDragEnd = {
                                 coroutineScope.launch {
                                     val threshold = size.width * 0.3f
-                                    if (offsetX.value > threshold) {
-                                        // deslizar a la derecha -> Archivar / Desarchivar
-                                        offsetX.animateTo(
-                                            targetValue = size.width.toFloat(),
-                                            animationSpec = tween(durationMillis = 200)
-                                        )
-                                        onArchiveToggle()
-                                    } else if (offsetX.value < -threshold) {
-                                        // deslizar a la izquierda -> Eliminar
+                                    if (offsetX.value < -threshold) {
                                         offsetX.animateTo(
                                             targetValue = -size.width.toFloat(),
-                                            animationSpec = tween(durationMillis = 200)
+                                            animationSpec = tween(200)
                                         )
                                         onDelete()
                                     } else {
@@ -479,155 +424,53 @@ fun SwipeableNoteItem(
                                 coroutineScope.launch { offsetX.animateTo(0f) }
                             },
                             onHorizontalDrag = { change, dragAmount ->
-                                change.consume()
-                                coroutineScope.launch {
-                                    val newOffset = offsetX.value + dragAmount
-                                    offsetX.snapTo(newOffset)
+                                if (dragAmount < 0 || offsetX.value < 0) {
+                                    change.consume()
+                                    coroutineScope.launch {
+                                        val newOffset = (offsetX.value + dragAmount).coerceAtMost(0f)
+                                        offsetX.snapTo(newOffset)
+                                    }
                                 }
                             }
                         )
                     }
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                NoteCardDesign(
-                    note = note,
-                    onTogglePin = onTogglePin,
-                    onArchiveToggle = onArchiveToggle,
-                    onEdit = onEdit,
-                    onDelete = onDelete
-                )
-            }
-        }
-    }
-}
-
-// diseño de la card de Figma
-@Composable
-fun NoteCardDesign(
-    note: Note,
-    onTogglePin: () -> Unit,
-    onArchiveToggle: () -> Unit,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit
-) {
-    val cardBgColor = parseColor(note.colorHex)
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(1.dp, BorderColor, RoundedCornerShape(16.dp)),
-        colors = CardDefaults.cardColors(containerColor = cardBgColor),
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Box(modifier = Modifier.padding(16.dp)) {
-            if (note.isPinned && !note.isArchived) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .size(24.dp)
-                        .clip(CircleShape)
-                        .background(AccentYellow),
-                    contentAlignment = Alignment.Center
+                Column(
+                    modifier = Modifier.weight(1f)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Star,
-                        contentDescription = "Fijada",
-                        tint = DarkBackground,
-                        modifier = Modifier.size(14.dp)
+                    //titulo de la nota
+                    Text(
+                        text = if (note.title.isNotBlank()) note.title else "Nueva nota",
+                        color = TextPrimary,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
-                }
-            }
 
-            Column {
-                // titulo
-                Text(
-                    text = note.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(end = if (note.isPinned && !note.isArchived) 28.dp else 0.dp)
-                )
+                    Spacer(modifier = Modifier.height(2.dp))
 
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // nota (contenido)
-                Text(
-                    text = note.content,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 3
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // fila inferior
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        // badge de categoría
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(SecondarySurface)
-                                .padding(horizontal = 10.dp, vertical = 4.dp)
-                        ) {
-                            Text(
-                                text = if (note.isArchived) "Archivada" else note.category,
-                                color = AccentYellow,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp
-                            )
-                        }
+                    //fecha corta y previsualizacion del contenido
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = formatShortDate(note.date),
+                            color = TextSecondary,
+                            fontSize = 14.sp
+                        )
 
                         Spacer(modifier = Modifier.width(8.dp))
 
-                        // tiempo transcurrido
                         Text(
-                            text = formatTimeAgo(note.date),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = TextSecondary
+                            text = if (note.content.isNotBlank()) note.content else "Sin texto adicional",
+                            color = TextSecondary,
+                            fontSize = 14.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
-                    }
-
-                    // botones de acción
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (note.isArchived) {
-                            // Botón para desarchivar directamente
-                            IconButton(onClick = onArchiveToggle, modifier = Modifier.size(28.dp)) {
-                                Icon(
-                                    imageVector = Icons.Default.Refresh,
-                                    contentDescription = "Desarchivar",
-                                    tint = AccentYellow,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        } else {
-                            IconButton(onClick = onTogglePin, modifier = Modifier.size(28.dp)) {
-                                Icon(
-                                    imageVector = Icons.Default.Star,
-                                    contentDescription = "Fijar",
-                                    tint = if (note.isPinned) AccentYellow else TextSecondary,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        }
-
-                        IconButton(onClick = onEdit, modifier = Modifier.size(28.dp)) {
-                            Icon(
-                                imageVector = Icons.Default.Edit,
-                                contentDescription = "Editar",
-                                tint = TextSecondary,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-
-                        IconButton(onClick = onDelete, modifier = Modifier.size(28.dp)) {
-                            Icon(
-                                imageVector = Icons.Default.Delete,
-                                contentDescription = "Eliminar",
-                                tint = TextSecondary,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
                     }
                 }
             }
@@ -635,17 +478,15 @@ fun NoteCardDesign(
     }
 }
 
-// bottomsheet para crear/editar
+//bottomsheet simplificado estilo ios para redactar o editar nota
 @Composable
 fun NoteFormBottomSheet(
     noteToEdit: Note?,
     onDismiss: () -> Unit,
-    onSave: (title: String, content: String, category: String, colorHex: String) -> Unit
+    onSave: (title: String, content: String) -> Unit
 ) {
     var title by remember { mutableStateOf(noteToEdit?.title ?: "") }
     var content by remember { mutableStateOf(noteToEdit?.content ?: "") }
-    var selectedCategory by remember { mutableStateOf(noteToEdit?.category ?: "Personal") }
-    var selectedColorHex by remember { mutableStateOf(noteToEdit?.colorHex ?: ColorOptions.first()) }
 
     Column(
         modifier = Modifier
@@ -654,7 +495,7 @@ fun NoteFormBottomSheet(
             .navigationBarsPadding(),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // titulo y boton de cerrar
+        //encabezado y boton de cerrar
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -662,7 +503,8 @@ fun NoteFormBottomSheet(
         ) {
             Text(
                 text = if (noteToEdit != null) "Editar nota" else "Nueva nota",
-                style = MaterialTheme.typography.titleLarge
+                style = MaterialTheme.typography.titleLarge,
+                fontSize = 22.sp
             )
 
             IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
@@ -674,11 +516,11 @@ fun NoteFormBottomSheet(
             }
         }
 
-        // titulo
+        //campo para titulo
         OutlinedTextField(
             value = title,
             onValueChange = { title = it },
-            placeholder = { Text("Título de la nota...", color = TextSecondary) },
+            placeholder = { Text("Título", color = TextSecondary) },
             modifier = Modifier.fillMaxWidth(),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = BorderColor,
@@ -692,14 +534,14 @@ fun NoteFormBottomSheet(
             singleLine = true
         )
 
-        // campo contenido
+        //campo para contenido de la nota
         OutlinedTextField(
             value = content,
             onValueChange = { content = it },
-            placeholder = { Text("Escribe tu nota aquí...", color = TextSecondary) },
+            placeholder = { Text("Nota...", color = TextSecondary) },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(140.dp),
+                .height(160.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = BorderColor,
                 unfocusedBorderColor = BorderColor,
@@ -711,69 +553,9 @@ fun NoteFormBottomSheet(
             shape = RoundedCornerShape(12.dp)
         )
 
-        // selector de categorias
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            CategoryList.forEach { category ->
-                val isSelected = selectedCategory == category
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(SecondarySurface)
-                        .border(
-                            width = 1.dp,
-                            color = if (isSelected) AccentYellow else BorderColor,
-                            shape = RoundedCornerShape(20.dp)
-                        )
-                        .clickable { selectedCategory = category }
-                        .padding(horizontal = 14.dp, vertical = 6.dp)
-                ) {
-                    Text(
-                        text = category,
-                        color = if (isSelected) AccentYellow else TextSecondary,
-                        fontSize = 13.sp,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                    )
-                }
-            }
-        }
-
-        // selector de fondos
-        Row(
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Fondo",
-                color = TextSecondary,
-                fontSize = 13.sp,
-                modifier = Modifier.padding(end = 12.dp)
-            )
-
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ColorOptions.forEach { hex ->
-                    val color = parseColor(hex)
-                    val isSelected = selectedColorHex == hex
-
-                    Box(
-                        modifier = Modifier
-                            .size(24.dp)
-                            .clip(CircleShape)
-                            .background(color)
-                            .border(
-                                width = if (isSelected) 2.dp else 1.dp,
-                                color = if (isSelected) AccentYellow else BorderColor,
-                                shape = CircleShape
-                            )
-                            .clickable { selectedColorHex = hex }
-                    )
-                }
-            }
-        }
-
         Spacer(modifier = Modifier.height(8.dp))
 
-        // agregar y cancelar
+        //botones de guardar y cancelar
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -796,7 +578,7 @@ fun NoteFormBottomSheet(
             Button(
                 onClick = {
                     if (isValid) {
-                        onSave(title, content, selectedCategory, selectedColorHex)
+                        onSave(title, content)
                     }
                 },
                 modifier = Modifier
@@ -818,29 +600,5 @@ fun NoteFormBottomSheet(
                 )
             }
         }
-    }
-}
-
-// función aux para convertir string hexadecimal a color de compose
-fun parseColor(hex: String): Color {
-    return try {
-        Color(android.graphics.Color.parseColor(hex))
-    } catch (_: Exception) {
-        CardBackground
-    }
-}
-
-// función aux para formatear la fecha a tiempo transcurrido
-fun formatTimeAgo(dateTime: LocalDateTime): String {
-    val duration = Duration.between(dateTime, LocalDateTime.now())
-    val minutes = duration.toMinutes()
-    val hours = duration.toHours()
-    val days = duration.toDays()
-
-    return when {
-        minutes < 1 -> "ahora"
-        minutes < 60 -> "hace ${minutes}m"
-        hours < 24 -> "hace ${hours}h"
-        else -> "hace ${days}d"
     }
 }

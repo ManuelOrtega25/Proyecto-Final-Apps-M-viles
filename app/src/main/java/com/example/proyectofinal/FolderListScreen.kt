@@ -57,6 +57,7 @@ import com.example.proyectofinal.ui.theme.SecondarySurface
 import com.example.proyectofinal.ui.theme.TextPrimary
 import com.example.proyectofinal.ui.theme.TextSecondary
 
+//iconos personalizados para carpeta
 val AvailableFolderIcons = listOf(
     "ic_folder_4", // Notas (punto)
     "ic_folder_1", // Trabajo (clip)
@@ -64,6 +65,7 @@ val AvailableFolderIcons = listOf(
     "ic_folder_3"  // Interrogación
 )
 
+//funcion para obtener el recurso drawable segun el nombre guardado
 fun getFolderIconRes(iconName: String): Int {
     return when (iconName) {
         "ic_folder_1" -> R.drawable.ic_folder_1
@@ -74,6 +76,7 @@ fun getFolderIconRes(iconName: String): Int {
     }
 }
 
+//pantalla principal con el listado de carpetas
 @Composable
 fun FolderListScreen(
     folderViewModel: FolderViewModel,
@@ -100,7 +103,7 @@ fun FolderListScreen(
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Encabezado
+            //encabezado de la pantalla
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -131,7 +134,7 @@ fun FolderListScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Barra de búsqueda
+            //barra de busqueda de carpetas
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
@@ -160,7 +163,7 @@ fun FolderListScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Sección "EN MI DISPOSITIVO"
+            //seccion en mi dispositivo
             Text(
                 text = "EN MI DISPOSITIVO",
                 style = MaterialTheme.typography.labelMedium,
@@ -216,7 +219,7 @@ fun FolderListScreen(
             }
         }
 
-        // Diálogo para crear nueva carpeta con selector de icono
+        //dialogo modal para crear nueva carpeta con selector de icono
         if (showCreateDialog) {
             AlertDialog(
                 onDismissRequest = { showCreateDialog = false },
@@ -254,7 +257,7 @@ fun FolderListScreen(
                             fontWeight = FontWeight.Medium
                         )
 
-                        // Selector de iconos en fila
+                        //selector de iconos en fila
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -317,6 +320,7 @@ fun FolderListScreen(
     }
 }
 
+//tarjeta individual para cada fila de la lista de carpetas
 @Composable
 fun FolderItemRow(
     folderWithCount: FolderWithCount,
