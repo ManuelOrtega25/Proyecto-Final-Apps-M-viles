@@ -1,4 +1,4 @@
-package com.example.act4
+package com.example.proyectofinal
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
@@ -31,6 +31,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
@@ -68,13 +69,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.act4.ui.theme.AccentYellow
-import com.example.act4.ui.theme.BorderColor
-import com.example.act4.ui.theme.CardBackground
-import com.example.act4.ui.theme.DarkBackground
-import com.example.act4.ui.theme.SecondarySurface
-import com.example.act4.ui.theme.TextPrimary
-import com.example.act4.ui.theme.TextSecondary
+import com.example.proyectofinal.ui.theme.AccentYellow
+import com.example.proyectofinal.ui.theme.BorderColor
+import com.example.proyectofinal.ui.theme.CardBackground
+import com.example.proyectofinal.ui.theme.DarkBackground
+import com.example.proyectofinal.ui.theme.SecondarySurface
+import com.example.proyectofinal.ui.theme.TextPrimary
+import com.example.proyectofinal.ui.theme.TextSecondary
 import java.time.Duration
 import java.time.LocalDateTime
 import kotlin.math.roundToInt
@@ -93,7 +94,11 @@ val CategoryList = listOf("Trabajo", "Personal", "Idea", "Urgente")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NoteListScreen(viewModel: NoteViewModel) {
+fun NoteListScreen(
+    viewModel: NoteViewModel,
+    folderName: String = "Notas",
+    onBackClick: (() -> Unit)? = null
+) {
     val notes by viewModel.allNotes.collectAsState()
     val rawNotes by viewModel.rawNotesList.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
@@ -114,6 +119,31 @@ fun NoteListScreen(viewModel: NoteViewModel) {
                 .padding(horizontal = 16.dp)
         ) {
             Spacer(modifier = Modifier.height(16.dp))
+
+            // Botón opcional para regresar a la pantalla de carpetas
+            if (onBackClick != null) {
+                Row(
+                    modifier = Modifier
+                        .clickable { onBackClick() }
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Volver a carpetas",
+                        tint = AccentYellow,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Carpetas",
+                        color = AccentYellow,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp
+                    )
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+            }
 
             // encabezado de la app
             Row(
@@ -142,7 +172,7 @@ fun NoteListScreen(viewModel: NoteViewModel) {
 
                     Column {
                         Text(
-                            text = if (selectedCategory == "Archivadas") "Archivadas" else "Notas",
+                            text = if (selectedCategory == "Archivadas") "Archivadas" else folderName,
                             style = MaterialTheme.typography.titleLarge
                         )
                         val activeNotes = rawNotes.filter { !it.isArchived }

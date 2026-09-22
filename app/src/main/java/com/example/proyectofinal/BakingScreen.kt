@@ -1,4 +1,4 @@
-package com.example.act4
+package com.example.proyectofinal
 
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.BorderStroke
