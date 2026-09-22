@@ -79,6 +79,12 @@ import java.time.Duration
 import java.time.LocalDateTime
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
+import android.app.DatePickerDialog
+import android.app.TimePickerDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.platform.LocalContext
+import java.time.format.DateTimeFormatter
+import java.util.Calendar
 
 // paleta de colores
 val ColorOptions = listOf(
@@ -98,6 +104,7 @@ fun NoteListScreen(viewModel: NoteViewModel) {
     val rawNotes by viewModel.rawNotesList.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val selectedCategory by viewModel.selectedCategory.collectAsState()
+    val context = LocalContext.current
 
     var showBottomSheet by remember { mutableStateOf(false) }
     var editingNote by remember { mutableStateOf<Note?>(null) }
@@ -328,26 +335,55 @@ fun NoteListScreen(viewModel: NoteViewModel) {
                 NoteFormBottomSheet(
                     noteToEdit = editingNote,
                     onDismiss = { showBottomSheet = false },
-                    onSave = { title, content, category, colorHex ->
+                    onSave = { title, content, category, colorHex, reminderAt ->
+
+
                         if (editingNote != null) {
-                            viewModel.updateNote(
-                                editingNote!!.copy(
+                            val updateNote = editingNote!!.copy(
                                     title = title,
                                     content = content,
                                     category = category,
-                                    colorHex = colorHex
-                                )
+                                    colorHex = colorHex,
+                                    reminderAt = reminderAt
                             )
+
+                            NotificationHelper.cancelReminder(
+                                context,
+                                editingNote!!.id
+                            )
+
+                            viewModel.updateNote(updateNote)
+
+                            if (reminderAt != null) {
+                                NotificationHelper.scheduleReminder(
+                                    context = context,
+                                    noteId = editingNote!!.id,
+                                    title = title,
+                                    reminderAt = reminderAt
+                                )
+                            }
                         } else {
                             val newNote = Note(
                                 title = title,
                                 content = content,
                                 date = LocalDateTime.now(),
+                                reminderAt = reminderAt,
                                 category = category,
                                 colorHex = colorHex
                             )
-                            viewModel.insertNote(newNote)
+                            viewModel.insertNote(newNote) { noteId ->
+
+                                if (reminderAt != null) {
+                                    NotificationHelper.scheduleReminder(
+                                        context = context,
+                                        noteId = noteId,
+                                        title = title,
+                                        reminderAt = reminderAt
+                                    )
+                                }
+                            }
                         }
+
                         showBottomSheet = false
                     }
                 )
@@ -370,7 +406,7 @@ fun SwipeableNoteItem(
     val offsetX = remember { Animatable(0f) }
 
     AnimatedVisibility(
-        visible = note.isVisible,
+        visible = true,
         enter = slideInHorizontally { -it } + fadeIn(),
         exit = slideOutVertically { it } + fadeOut(),
         modifier = modifier
@@ -610,12 +646,21 @@ fun NoteCardDesign(
 fun NoteFormBottomSheet(
     noteToEdit: Note?,
     onDismiss: () -> Unit,
-    onSave: (title: String, content: String, category: String, colorHex: String) -> Unit
+    onSave: (
+        title: String,
+        content: String,
+        category: String,
+        colorHex: String,
+        reminderAt: LocalDateTime?
+            ) -> Unit
 ) {
     var title by remember { mutableStateOf(noteToEdit?.title ?: "") }
     var content by remember { mutableStateOf(noteToEdit?.content ?: "") }
     var selectedCategory by remember { mutableStateOf(noteToEdit?.category ?: "Personal") }
     var selectedColorHex by remember { mutableStateOf(noteToEdit?.colorHex ?: ColorOptions.first()) }
+    var reminderAt by remember { mutableStateOf(noteToEdit?.reminderAt) }
+    val context = LocalContext.current
+    val reminderFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
 
     Column(
         modifier = Modifier
@@ -743,6 +788,59 @@ fun NoteFormBottomSheet(
 
         Spacer(modifier = Modifier.height(8.dp))
 
+        Button(
+            onClick = {
+                val calendar = Calendar.getInstance()
+
+                DatePickerDialog(
+                    context,
+                    { _, year, month, dayOfMonth ->
+
+                        TimePickerDialog(
+                            context,
+                            { _, hour, minute ->
+                                reminderAt = LocalDateTime.of(
+                                    year,
+                                    month + 1,
+                                    dayOfMonth,
+                                    hour,
+                                    minute
+                                )
+                            },
+                            calendar.get(Calendar.HOUR_OF_DAY),
+                            calendar.get(Calendar.MINUTE),
+                            true
+                        ).show()
+                    },
+                    calendar.get(Calendar.YEAR),
+                    calendar.get(Calendar.MONTH),
+                    calendar.get(Calendar.DAY_OF_MONTH)
+                ).show()
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                text = if (reminderAt == null)
+                    "🔔Agregar recordatorio"
+                else
+                    "🔔${reminderAt!!.format(reminderFormatter)}",
+                color = Color.Black
+            )
+        }
+
+        if (reminderAt != null) {
+            TextButton(
+                onClick = {
+                    reminderAt = null
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(text = "Quitar recordatorio",
+                    color = Color.Black)
+            }
+        }
+
+
         // agregar y cancelar
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -766,7 +864,7 @@ fun NoteFormBottomSheet(
             Button(
                 onClick = {
                     if (isValid) {
-                        onSave(title, content, selectedCategory, selectedColorHex)
+                        onSave(title, content, selectedCategory, selectedColorHex, reminderAt)
                     }
                 },
                 modifier = Modifier
