@@ -1,4 +1,4 @@
-package com.example.act4
+package com.example.proyectofinal
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
@@ -68,13 +68,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.act4.ui.theme.AccentYellow
-import com.example.act4.ui.theme.BorderColor
-import com.example.act4.ui.theme.CardBackground
-import com.example.act4.ui.theme.DarkBackground
-import com.example.act4.ui.theme.SecondarySurface
-import com.example.act4.ui.theme.TextPrimary
-import com.example.act4.ui.theme.TextSecondary
+import com.example.proyectofinal.ui.theme.AccentYellow
+import com.example.proyectofinal.ui.theme.BorderColor
+import com.example.proyectofinal.ui.theme.CardBackground
+import com.example.proyectofinal.ui.theme.DarkBackground
+import com.example.proyectofinal.ui.theme.SecondarySurface
+import com.example.proyectofinal.ui.theme.TextPrimary
+import com.example.proyectofinal.ui.theme.TextSecondary
 import java.time.Duration
 import java.time.LocalDateTime
 import kotlin.math.roundToInt

@@ -1,4 +1,4 @@
-package com.example.act4
+package com.example.proyectofinal
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import com.example.act4.ui.theme.Act4Theme
+import com.example.proyectofinal.ui.theme.Act4Theme
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build

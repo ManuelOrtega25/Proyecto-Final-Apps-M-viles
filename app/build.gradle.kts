@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.act4"
+    namespace = "com.example.proyectofinal"
     compileSdk {
         version = release(37)
     }
